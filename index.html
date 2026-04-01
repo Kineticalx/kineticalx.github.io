@@ -1,0 +1,763 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Wanderplan</title>
+<link rel="manifest" href="data:application/json,{&quot;name&quot;:&quot;Wanderplan&quot;,&quot;short_name&quot;:&quot;Wanderplan&quot;,&quot;display&quot;:&quot;standalone&quot;,&quot;background_color&quot;:&quot;#f5f2ed&quot;,&quot;theme_color&quot;:&quot;#2c2c2a&quot;,&quot;start_url&quot;:&quot;/&quot;}" />
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=DM+Serif+Display:ital@0;1&family=DM+Sans:wght@300;400;500&display=swap');
+
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+  :root {
+    --bg: #f5f2ed;
+    --surface: #ffffff;
+    --surface2: #f0ece4;
+    --border: rgba(44,44,42,0.12);
+    --border-strong: rgba(44,44,42,0.22);
+    --text: #2c2c2a;
+    --text2: #6b6a66;
+    --text3: #9e9d99;
+    --accent: #2c5f4a;
+    --accent-light: #e4efe9;
+    --accent2: #b05c2a;
+    --accent2-light: #faeee5;
+    --past: #3b3469;
+    --past-light: #eeedf8;
+    --radius: 12px;
+    --radius-sm: 8px;
+    --shadow: 0 1px 3px rgba(44,44,42,0.08), 0 4px 12px rgba(44,44,42,0.06);
+  }
+
+  body {
+    font-family: 'DM Sans', sans-serif;
+    background: var(--bg);
+    color: var(--text);
+    min-height: 100vh;
+    font-size: 15px;
+  }
+
+  /* Layout */
+  .layout { display: flex; height: 100vh; overflow: hidden; }
+
+  /* Sidebar */
+  .sidebar {
+    width: 240px;
+    background: var(--surface);
+    border-right: 1px solid var(--border);
+    display: flex;
+    flex-direction: column;
+    flex-shrink: 0;
+    overflow-y: auto;
+  }
+  .sidebar-logo {
+    padding: 22px 20px 18px;
+    border-bottom: 1px solid var(--border);
+    display: flex;
+    align-items: center;
+    gap: 10px;
+  }
+  .logo-icon {
+    width: 32px; height: 32px;
+    background: var(--accent);
+    border-radius: 8px;
+    display: flex; align-items: center; justify-content: center;
+  }
+  .logo-icon svg { width: 16px; height: 16px; fill: white; }
+  .logo-text {
+    font-family: 'DM Serif Display', serif;
+    font-size: 18px;
+    color: var(--text);
+    letter-spacing: -0.01em;
+  }
+
+  .nav { padding: 12px 10px; flex: 1; }
+  .nav-section-label {
+    font-size: 10px;
+    font-weight: 500;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    color: var(--text3);
+    padding: 10px 10px 4px;
+  }
+  .nav-item {
+    display: flex; align-items: center; gap: 10px;
+    padding: 8px 10px;
+    border-radius: var(--radius-sm);
+    cursor: pointer;
+    font-size: 13.5px;
+    color: var(--text2);
+    transition: background 0.12s, color 0.12s;
+    user-select: none;
+  }
+  .nav-item:hover { background: var(--surface2); color: var(--text); }
+  .nav-item.active { background: var(--surface2); color: var(--text); font-weight: 500; }
+  .nav-item svg { opacity: 0.6; flex-shrink: 0; }
+  .nav-item.active svg { opacity: 1; }
+  .nav-dot { width: 8px; height: 8px; border-radius: 50%; flex-shrink: 0; }
+
+  /* Main */
+  .main { flex: 1; display: flex; flex-direction: column; overflow: hidden; background: var(--bg); }
+  .topbar {
+    padding: 14px 20px;
+    background: var(--surface);
+    border-bottom: 1px solid var(--border);
+    display: flex; align-items: center; justify-content: space-between;
+    flex-shrink: 0;
+  }
+  .topbar-title { font-family: 'DM Serif Display', serif; font-size: 20px; color: var(--text); }
+  .content { flex: 1; overflow-y: auto; padding: 20px; }
+
+  /* Buttons */
+  .btn {
+    font-family: 'DM Sans', sans-serif;
+    font-size: 13px;
+    padding: 7px 14px;
+    border-radius: var(--radius-sm);
+    border: 1px solid var(--border-strong);
+    background: transparent;
+    color: var(--text);
+    cursor: pointer;
+    transition: background 0.12s;
+  }
+  .btn:hover { background: var(--surface2); }
+  .btn-primary {
+    background: var(--accent);
+    color: white;
+    border-color: var(--accent);
+  }
+  .btn-primary:hover { background: #234f3d; }
+  .btn-sm { font-size: 12px; padding: 5px 10px; }
+
+  /* Cards grid */
+  .grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(195px, 1fr)); gap: 12px; }
+
+  .card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    padding: 16px;
+    cursor: pointer;
+    transition: box-shadow 0.15s, border-color 0.15s;
+    box-shadow: var(--shadow);
+  }
+  .card:hover { border-color: var(--border-strong); box-shadow: 0 2px 8px rgba(44,44,42,0.12); }
+  .card-emoji { font-size: 26px; margin-bottom: 10px; display: block; }
+  .card-title { font-size: 14px; font-weight: 500; color: var(--text); margin-bottom: 2px; }
+  .card-sub { font-size: 12px; color: var(--text2); }
+  .card-meta { display: flex; gap: 6px; margin-top: 10px; flex-wrap: wrap; }
+
+  .add-card {
+    background: transparent;
+    border: 1.5px dashed var(--border-strong);
+    border-radius: var(--radius);
+    padding: 16px;
+    cursor: pointer;
+    display: flex; flex-direction: column; align-items: center; justify-content: center;
+    gap: 8px; min-height: 130px;
+    transition: border-color 0.15s, background 0.15s;
+    color: var(--text3);
+    font-size: 13px;
+  }
+  .add-card:hover { border-color: var(--accent); color: var(--accent); background: var(--accent-light); }
+  .add-card svg { opacity: 0.4; }
+  .add-card:hover svg { opacity: 0.8; }
+
+  /* Tags */
+  .tag { font-size: 11px; padding: 2px 9px; border-radius: 99px; font-weight: 500; display: inline-block; }
+  .tag-green { background: var(--accent-light); color: var(--accent); }
+  .tag-amber { background: var(--accent2-light); color: var(--accent2); }
+  .tag-blue { background: #e6f1fb; color: #185fa5; }
+  .tag-past { background: var(--past-light); color: var(--past); }
+  .tag-gray { background: var(--surface2); color: var(--text2); }
+  .tag-red { background: #fcebeb; color: #a32d2d; }
+
+  /* Trip detail */
+  .section-label {
+    font-size: 10px; font-weight: 500; letter-spacing: 0.08em;
+    text-transform: uppercase; color: var(--text3); margin-bottom: 10px; margin-top: 22px;
+  }
+  .section-label:first-child { margin-top: 0; }
+  .itinerary-day {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-sm);
+    padding: 10px 14px;
+    margin-bottom: 6px;
+    display: flex; gap: 12px; align-items: flex-start;
+  }
+  .day-num {
+    font-size: 11px; font-weight: 500; color: var(--text3);
+    background: var(--surface2); border-radius: 6px;
+    padding: 2px 7px; flex-shrink: 0; margin-top: 1px;
+  }
+  .day-text { font-size: 13px; color: var(--text); line-height: 1.5; }
+  .place-row {
+    display: flex; align-items: center; gap: 10px;
+    padding: 9px 0; border-bottom: 1px solid var(--border);
+  }
+  .place-row:last-child { border-bottom: none; }
+  .note-box {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-sm);
+    padding: 14px;
+    font-size: 13px; color: var(--text); line-height: 1.7;
+  }
+
+  /* Past travel specific */
+  .past-header-card {
+    background: linear-gradient(135deg, var(--past) 0%, #534ab7 100%);
+    border-radius: var(--radius);
+    padding: 18px 20px;
+    color: white;
+    margin-bottom: 4px;
+  }
+  .memories-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(180px, 1fr)); gap: 10px; margin-top: 10px; }
+  .memory-item {
+    background: var(--surface2);
+    border-radius: var(--radius-sm);
+    padding: 10px 12px;
+    font-size: 13px;
+    color: var(--text);
+    line-height: 1.5;
+    display: flex; gap: 8px; align-items: flex-start;
+  }
+
+  /* Modal */
+  .modal-overlay {
+    position: fixed; inset: 0;
+    background: rgba(44,44,42,0.5);
+    display: flex; align-items: center; justify-content: center;
+    z-index: 100;
+    padding: 20px;
+  }
+  .modal {
+    background: var(--surface);
+    border-radius: var(--radius);
+    padding: 24px;
+    width: 100%; max-width: 380px;
+    box-shadow: 0 8px 32px rgba(44,44,42,0.2);
+    max-height: 90vh;
+    overflow-y: auto;
+  }
+  .modal h2 { font-family: 'DM Serif Display', serif; font-size: 20px; color: var(--text); margin-bottom: 18px; }
+  .field { margin-bottom: 13px; }
+  .field label { font-size: 12px; color: var(--text2); display: block; margin-bottom: 5px; font-weight: 500; }
+  .field input, .field textarea, .field select {
+    width: 100%;
+    font-family: 'DM Sans', sans-serif;
+    font-size: 13px;
+    padding: 8px 11px;
+    border: 1px solid var(--border-strong);
+    border-radius: var(--radius-sm);
+    background: var(--bg);
+    color: var(--text);
+    outline: none;
+    transition: border-color 0.12s;
+  }
+  .field input:focus, .field textarea:focus, .field select:focus { border-color: var(--accent); }
+  .field textarea { resize: vertical; min-height: 72px; }
+  .modal-actions { display: flex; gap: 8px; justify-content: flex-end; margin-top: 18px; }
+
+  /* Star rating */
+  .stars { display: flex; gap: 4px; margin-top: 6px; }
+  .star { font-size: 20px; cursor: pointer; color: var(--border-strong); transition: color 0.1s; }
+  .star.filled { color: #e8a020; }
+
+  /* Stats row */
+  .stats-row { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; margin-bottom: 20px; }
+  .stat-card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    padding: 14px 16px;
+    text-align: center;
+  }
+  .stat-num { font-family: 'DM Serif Display', serif; font-size: 28px; color: var(--text); }
+  .stat-label { font-size: 11px; color: var(--text3); margin-top: 2px; }
+
+  /* Mobile hamburger */
+  .hamburger {
+    display: none;
+    flex-direction: column; gap: 5px;
+    cursor: pointer; padding: 4px; margin-right: 8px;
+  }
+  .hamburger span { display: block; width: 20px; height: 2px; background: var(--text); border-radius: 2px; }
+
+  /* Responsive */
+  @media (max-width: 640px) {
+    .sidebar { position: fixed; left: -240px; top: 0; height: 100vh; z-index: 50; transition: left 0.25s ease; }
+    .sidebar.open { left: 0; box-shadow: 4px 0 20px rgba(44,44,42,0.2); }
+    .hamburger { display: flex; }
+    .stats-row { grid-template-columns: repeat(3, 1fr); }
+    .grid { grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); }
+    .modal { max-width: 100%; }
+  }
+
+  /* Overlay for mobile sidebar close */
+  .sidebar-overlay { display: none; position: fixed; inset: 0; z-index: 49; }
+  .sidebar-overlay.active { display: block; }
+
+  /* Scrollbar */
+  ::-webkit-scrollbar { width: 5px; }
+  ::-webkit-scrollbar-track { background: transparent; }
+  ::-webkit-scrollbar-thumb { background: var(--border-strong); border-radius: 99px; }
+</style>
+</head>
+<body>
+
+<div class="layout">
+  <!-- Sidebar -->
+  <div class="sidebar" id="sidebar">
+    <div class="sidebar-logo">
+      <div class="logo-icon">
+        <svg viewBox="0 0 16 16"><path d="M8 1C5.2 1 3 3.2 3 6c0 4 5 9 5 9s5-5 5-9c0-2.8-2.2-5-5-5zm0 6.5C6.9 7.5 6 6.6 6 5.5S6.9 3.5 8 3.5s2 .9 2 2-.9 2-2 2z"/></svg>
+      </div>
+      <span class="logo-text">Wanderplan</span>
+    </div>
+    <div class="nav">
+      <div class="nav-section-label">Plan</div>
+      <div class="nav-item active" onclick="setView('trips',this)" id="nav-trips">
+        <svg width="15" height="15" viewBox="0 0 15 15" fill="none"><rect x="1.5" y="2.5" width="12" height="10" rx="2" stroke="currentColor" stroke-width="1.3"/><path d="M1.5 5.5h12" stroke="currentColor" stroke-width="1.3"/><path d="M5.5 2.5v3M9.5 2.5v3" stroke="currentColor" stroke-width="1.3" stroke-linecap="round"/></svg>
+        Trips
+      </div>
+      <div class="nav-item" onclick="setView('places',this)" id="nav-places">
+        <svg width="15" height="15" viewBox="0 0 15 15" fill="none"><path d="M7.5 1.5C5.3 1.5 3.5 3.3 3.5 5.5c0 3.2 4 7.5 4 7.5s4-4.3 4-7.5c0-2.2-1.8-4-4-4z" stroke="currentColor" stroke-width="1.3"/><circle cx="7.5" cy="5.5" r="1.3" stroke="currentColor" stroke-width="1.2"/></svg>
+        Places
+      </div>
+      <div class="nav-item" onclick="setView('journal',this)" id="nav-journal">
+        <svg width="15" height="15" viewBox="0 0 15 15" fill="none"><rect x="2.5" y="1.5" width="10" height="12" rx="1.5" stroke="currentColor" stroke-width="1.3"/><path d="M5 5h5M5 7.5h5M5 10h3" stroke="currentColor" stroke-width="1.3" stroke-linecap="round"/></svg>
+        Journal
+      </div>
+
+      <div class="nav-section-label" style="margin-top:8px;">Remember</div>
+      <div class="nav-item" onclick="setView('past',this)" id="nav-past">
+        <svg width="15" height="15" viewBox="0 0 15 15" fill="none"><path d="M7.5 2a5.5 5.5 0 1 0 0 11A5.5 5.5 0 0 0 7.5 2z" stroke="currentColor" stroke-width="1.3"/><path d="M7.5 4.5V7.5l2 2" stroke="currentColor" stroke-width="1.3" stroke-linecap="round"/></svg>
+        Past travels
+      </div>
+
+      <div class="nav-section-label" style="margin-top:8px;">My trips</div>
+      <div id="trip-nav-list"></div>
+    </div>
+  </div>
+  <div class="sidebar-overlay" id="sidebar-overlay" onclick="closeSidebar()"></div>
+
+  <!-- Main -->
+  <div class="main">
+    <div class="topbar">
+      <div style="display:flex;align-items:center;gap:4px;">
+        <div class="hamburger" onclick="toggleSidebar()">
+          <span></span><span></span><span></span>
+        </div>
+        <span class="topbar-title" id="topbar-title">Trips</span>
+      </div>
+      <button class="btn btn-primary" onclick="openAddModal()" id="add-btn">+ Add</button>
+    </div>
+    <div class="content" id="content"></div>
+  </div>
+</div>
+
+<div id="modal-root"></div>
+
+<script>
+let view = 'trips';
+let selectedTrip = null;
+
+const STORAGE_KEY = 'wanderplan_v2';
+let data = loadData();
+
+function loadData() {
+  try {
+    const saved = localStorage.getItem(STORAGE_KEY);
+    if (saved) return JSON.parse(saved);
+  } catch(e) {}
+  return {
+    trips: [
+      { id: 1, name: 'Japan Spring', emoji: '🌸', dates: 'Apr 12 – Apr 26', status: 'upcoming', days: ['Arrive Tokyo, check in Shinjuku hotel', 'Senso-ji Temple + Akihabara', 'Shinkansen to Kyoto', 'Arashiyama bamboo grove', 'Fushimi Inari + Gion walk', 'Osaka food tour'], places: [1, 2], notes: 'Book JR Pass before leaving. Check cherry blossom forecast.' },
+      { id: 2, name: 'Portugal Coast', emoji: '🏄', dates: 'Jul 3 – Jul 14', status: 'planning', days: ['Arrive Lisbon', 'Sintra day trip', 'Drive to Alentejo', 'Algarve beaches'], places: [3], notes: 'Rent a car from Lisbon.' },
+    ],
+    places: [
+      { id: 1, name: 'Senso-ji Temple', location: 'Tokyo, Japan', type: 'Culture', emoji: '⛩️', note: 'Go early morning to avoid crowds.' },
+      { id: 2, name: 'Arashiyama Bamboo Grove', location: 'Kyoto, Japan', type: 'Nature', emoji: '🎋', note: 'Magical at dawn.' },
+      { id: 3, name: 'Pena Palace', location: 'Sintra, Portugal', type: 'Culture', emoji: '🏰', note: 'Book tickets online in advance.' },
+    ],
+    journal: [
+      { id: 1, title: 'Planning Japan — where to start', date: 'Mar 15, 2025', body: 'Started researching the JR Pass options. The 14-day pass makes more sense than the 7-day given our itinerary. Also bookmarked a great food tour in Osaka.' },
+    ],
+    past: [
+      { id: 1, name: 'Bali', emoji: '🌴', year: '2023', rating: 5, highlights: ['Tegallalang Rice Terraces', 'Uluwatu Temple sunset', 'Cooking class in Ubud'], notes: 'Perfect trip. Would love to go back in dry season (May–Sep). Stayed at a villa in Seminyak.' },
+    ]
+  };
+}
+
+function saveData() {
+  try { localStorage.setItem(STORAGE_KEY, JSON.stringify(data)); } catch(e) {}
+}
+
+// ── Navigation ────────────────────────────────────────────────
+function setView(v, el) {
+  view = v;
+  selectedTrip = null;
+  document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('active'));
+  if (el) el.classList.add('active');
+  else { const navEl = document.getElementById('nav-' + v); if (navEl) navEl.classList.add('active'); }
+  renderTopbar();
+  renderContent();
+  closeSidebar();
+}
+
+function openTrip(id) {
+  selectedTrip = data.trips.find(t => t.id === id);
+  view = 'trip-detail';
+  document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('active'));
+  const navEl = document.getElementById('trip-nav-' + id);
+  if (navEl) navEl.classList.add('active');
+  renderTopbar();
+  renderContent();
+  closeSidebar();
+}
+
+function openPast(id) {
+  selectedTrip = data.past.find(t => t.id === id);
+  view = 'past-detail';
+  renderTopbar();
+  renderContent();
+}
+
+function toggleSidebar() {
+  document.getElementById('sidebar').classList.toggle('open');
+  document.getElementById('sidebar-overlay').classList.toggle('active');
+}
+function closeSidebar() {
+  document.getElementById('sidebar').classList.remove('open');
+  document.getElementById('sidebar-overlay').classList.remove('active');
+}
+
+// ── Render helpers ────────────────────────────────────────────
+function renderTopbar() {
+  const titles = {
+    trips: 'Trips', places: 'Places', journal: 'Journal', past: 'Past travels',
+    'trip-detail': selectedTrip ? selectedTrip.name : '',
+    'past-detail': selectedTrip ? selectedTrip.name : ''
+  };
+  document.getElementById('topbar-title').textContent = titles[view] || '';
+  document.getElementById('add-btn').style.display = (view === 'trip-detail' || view === 'past-detail') ? 'none' : '';
+}
+
+function renderSidebarTrips() {
+  const colors = ['#2c5f4a','#3b3469','#b05c2a','#185fa5','#639922'];
+  document.getElementById('trip-nav-list').innerHTML = data.trips.map((t,i) =>
+    `<div class="nav-item" onclick="openTrip(${t.id})" id="trip-nav-${t.id}" style="font-size:13px;">
+      <div class="nav-dot" style="background:${colors[i%colors.length]}"></div>${t.name}
+    </div>`).join('');
+}
+
+function renderContent() {
+  const c = document.getElementById('content');
+  if (view === 'trips') c.innerHTML = renderTrips();
+  else if (view === 'places') c.innerHTML = renderPlaces();
+  else if (view === 'journal') c.innerHTML = renderJournal();
+  else if (view === 'past') c.innerHTML = renderPast();
+  else if (view === 'trip-detail') c.innerHTML = renderTripDetail();
+  else if (view === 'past-detail') c.innerHTML = renderPastDetail();
+}
+
+// ── Views ─────────────────────────────────────────────────────
+function renderTrips() {
+  const statusTag = s => s === 'upcoming'
+    ? '<span class="tag tag-green">Upcoming</span>'
+    : '<span class="tag tag-amber">Planning</span>';
+  return `<div class="grid">` +
+    data.trips.map(t =>
+      `<div class="card" onclick="openTrip(${t.id})">
+        <span class="card-emoji">${t.emoji}</span>
+        <div class="card-title">${t.name}</div>
+        <div class="card-sub">${t.dates}</div>
+        <div class="card-meta">${statusTag(t.status)}</div>
+      </div>`).join('') +
+    `<div class="add-card" onclick="openAddModal()">
+      <svg width="22" height="22" viewBox="0 0 22 22" fill="none"><circle cx="11" cy="11" r="9" stroke="currentColor" stroke-width="1.3"/><path d="M11 7v8M7 11h8" stroke="currentColor" stroke-width="1.4" stroke-linecap="round"/></svg>
+      New trip
+    </div></div>`;
+}
+
+function renderPlaces() {
+  const typeTag = t => {
+    const map = { Culture:'tag-blue', Nature:'tag-green', Food:'tag-amber', Adventure:'tag-red' };
+    return `<span class="tag ${map[t]||'tag-gray'}">${t}</span>`;
+  };
+  return `<div class="grid">` +
+    data.places.map(p =>
+      `<div class="card" style="cursor:default;">
+        <span class="card-emoji">${p.emoji}</span>
+        <div class="card-title">${p.name}</div>
+        <div class="card-sub">${p.location}</div>
+        <div class="card-meta">${typeTag(p.type)}</div>
+        ${p.note ? `<div style="font-size:12px;color:var(--text2);margin-top:8px;line-height:1.5;">${p.note}</div>` : ''}
+      </div>`).join('') +
+    `<div class="add-card" onclick="openAddModal()">
+      <svg width="22" height="22" viewBox="0 0 22 22" fill="none"><circle cx="11" cy="11" r="9" stroke="currentColor" stroke-width="1.3"/><path d="M11 7v8M7 11h8" stroke="currentColor" stroke-width="1.4" stroke-linecap="round"/></svg>
+      Add place
+    </div></div>`;
+}
+
+function renderJournal() {
+  return `<div style="display:flex;flex-direction:column;gap:10px;">` +
+    data.journal.map(e =>
+      `<div class="card" style="cursor:default;">
+        <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:8px;gap:8px;">
+          <div class="card-title" style="font-size:15px;">${e.title}</div>
+          <div class="card-sub" style="flex-shrink:0;font-size:11px;">${e.date}</div>
+        </div>
+        <div style="font-size:13px;color:var(--text2);line-height:1.7;">${e.body}</div>
+      </div>`).join('') +
+    `<div class="add-card" onclick="openAddModal()" style="min-height:70px;">
+      <svg width="22" height="22" viewBox="0 0 22 22" fill="none"><circle cx="11" cy="11" r="9" stroke="currentColor" stroke-width="1.3"/><path d="M11 7v8M7 11h8" stroke="currentColor" stroke-width="1.4" stroke-linecap="round"/></svg>
+      New entry
+    </div></div>`;
+}
+
+function renderPast() {
+  const countries = [...new Set(data.past.map(p => p.name))].length;
+  const avgRating = data.past.length ? (data.past.reduce((s,p) => s + (p.rating||0), 0) / data.past.length).toFixed(1) : '—';
+  return `
+    <div class="stats-row">
+      <div class="stat-card"><div class="stat-num">${data.past.length}</div><div class="stat-label">Trips taken</div></div>
+      <div class="stat-card"><div class="stat-num">${countries}</div><div class="stat-label">Destinations</div></div>
+      <div class="stat-card"><div class="stat-num">${avgRating}</div><div class="stat-label">Avg rating</div></div>
+    </div>
+    <div class="grid">` +
+    data.past.map(p =>
+      `<div class="card" onclick="openPast(${p.id})">
+        <span class="card-emoji">${p.emoji}</span>
+        <div class="card-title">${p.name}</div>
+        <div class="card-sub">${p.year}</div>
+        <div class="card-meta">
+          <span class="tag tag-past">${'★'.repeat(p.rating||0)}</span>
+        </div>
+        ${p.highlights && p.highlights.length ? `<div style="font-size:12px;color:var(--text2);margin-top:8px;">${p.highlights[0]}${p.highlights.length > 1 ? ` +${p.highlights.length-1} more` : ''}</div>` : ''}
+      </div>`).join('') +
+    `<div class="add-card" onclick="openAddModal()">
+      <svg width="22" height="22" viewBox="0 0 22 22" fill="none"><circle cx="11" cy="11" r="9" stroke="currentColor" stroke-width="1.3"/><path d="M11 7v8M7 11h8" stroke="currentColor" stroke-width="1.4" stroke-linecap="round"/></svg>
+      Log past trip
+    </div></div>`;
+}
+
+function renderTripDetail() {
+  if (!selectedTrip) return '';
+  const t = selectedTrip;
+  const tripPlaces = data.places.filter(p => (t.places||[]).includes(p.id));
+  return `
+    <div style="display:flex;align-items:center;gap:12px;margin-bottom:4px;">
+      <span style="font-size:36px;">${t.emoji}</span>
+      <div>
+        <div style="font-size:18px;font-family:'DM Serif Display',serif;color:var(--text);">${t.name}</div>
+        <div style="font-size:13px;color:var(--text2);">${t.dates}</div>
+      </div>
+      <button class="btn btn-sm" onclick="setView('trips',document.getElementById('nav-trips'))" style="margin-left:auto;">← Back</button>
+    </div>
+    <div class="section-label">Itinerary</div>
+    ${(t.days||[]).map((d,i) =>
+      `<div class="itinerary-day">
+        <span class="day-num">Day ${i+1}</span>
+        <span class="day-text">${d}</span>
+      </div>`).join('')}
+    <button class="btn btn-sm" style="margin-top:6px;" onclick="openDayModal(${t.id})">+ Add day</button>
+    <div class="section-label" style="margin-top:20px;">Places to visit</div>
+    <div style="background:var(--surface);border:1px solid var(--border);border-radius:var(--radius-sm);padding:4px 14px;">
+      ${tripPlaces.length ? tripPlaces.map(p =>
+        `<div class="place-row">
+          <span style="font-size:20px;">${p.emoji}</span>
+          <div>
+            <div style="font-size:13px;font-weight:500;">${p.name}</div>
+            <div style="font-size:12px;color:var(--text2);">${p.location}</div>
+          </div>
+        </div>`).join('') : '<div style="font-size:13px;color:var(--text3);padding:10px 0;">No places added yet.</div>'}
+    </div>
+    <div class="section-label" style="margin-top:20px;">Notes</div>
+    <div class="note-box">${t.notes || '<span style="color:var(--text3)">No notes yet.</span>'}</div>`;
+}
+
+function renderPastDetail() {
+  if (!selectedTrip) return '';
+  const t = selectedTrip;
+  const stars = '★'.repeat(t.rating||0) + '☆'.repeat(5-(t.rating||0));
+  return `
+    <div style="display:flex;align-items:center;gap:12px;margin-bottom:4px;">
+      <span style="font-size:36px;">${t.emoji}</span>
+      <div>
+        <div style="font-size:18px;font-family:'DM Serif Display',serif;color:var(--text);">${t.name}</div>
+        <div style="font-size:13px;color:var(--text2);">${t.year} · <span style="color:#e8a020;">${stars}</span></div>
+      </div>
+      <button class="btn btn-sm" onclick="setView('past',document.getElementById('nav-past'))" style="margin-left:auto;">← Back</button>
+    </div>
+    <div class="section-label" style="margin-top:20px;">Highlights</div>
+    ${(t.highlights||[]).length
+      ? `<div class="memories-grid">${(t.highlights||[]).map(h =>
+          `<div class="memory-item">
+            <span style="color:var(--past);font-size:14px;flex-shrink:0;">✦</span>
+            <span>${h}</span>
+          </div>`).join('')}</div>`
+      : '<div style="font-size:13px;color:var(--text3);">No highlights added.</div>'}
+    <button class="btn btn-sm" style="margin-top:10px;" onclick="openHighlightModal(${t.id})">+ Add highlight</button>
+    <div class="section-label" style="margin-top:20px;">Notes & memories</div>
+    <div class="note-box">${t.notes || '<span style="color:var(--text3)">No notes yet.</span>'}</div>`;
+}
+
+// ── Modals ────────────────────────────────────────────────────
+function openAddModal() {
+  const r = document.getElementById('modal-root');
+  if (view === 'trips') {
+    r.innerHTML = `<div class="modal-overlay" onclick="if(event.target===this)closeModal()"><div class="modal">
+      <h2>New trip</h2>
+      <div class="field"><label>Destination</label><input id="m-name" placeholder="e.g. Morocco" /></div>
+      <div class="field"><label>Dates</label><input id="m-dates" placeholder="e.g. Aug 10 – Aug 22" /></div>
+      <div class="field"><label>Status</label><select id="m-status"><option value="planning">Planning</option><option value="upcoming">Upcoming</option></select></div>
+      <div class="field"><label>Emoji</label><input id="m-emoji" placeholder="✈️" style="width:72px;" /></div>
+      <div class="modal-actions"><button class="btn" onclick="closeModal()">Cancel</button><button class="btn btn-primary" onclick="saveTrip()">Save</button></div>
+    </div></div>`;
+  } else if (view === 'places') {
+    r.innerHTML = `<div class="modal-overlay" onclick="if(event.target===this)closeModal()"><div class="modal">
+      <h2>Add place</h2>
+      <div class="field"><label>Name</label><input id="m-name" placeholder="e.g. Sagrada Familia" /></div>
+      <div class="field"><label>Location</label><input id="m-loc" placeholder="e.g. Barcelona, Spain" /></div>
+      <div class="field"><label>Type</label><select id="m-type"><option>Culture</option><option>Nature</option><option>Food</option><option>Adventure</option></select></div>
+      <div class="field"><label>Emoji</label><input id="m-emoji" placeholder="🏛️" style="width:72px;" /></div>
+      <div class="field"><label>Note</label><textarea id="m-note" placeholder="Tips or reminders..."></textarea></div>
+      <div class="modal-actions"><button class="btn" onclick="closeModal()">Cancel</button><button class="btn btn-primary" onclick="savePlace()">Save</button></div>
+    </div></div>`;
+  } else if (view === 'journal') {
+    r.innerHTML = `<div class="modal-overlay" onclick="if(event.target===this)closeModal()"><div class="modal">
+      <h2>New journal entry</h2>
+      <div class="field"><label>Title</label><input id="m-title" placeholder="What's on your mind?" /></div>
+      <div class="field"><label>Entry</label><textarea id="m-body" placeholder="Write your thoughts..." style="min-height:110px;"></textarea></div>
+      <div class="modal-actions"><button class="btn" onclick="closeModal()">Cancel</button><button class="btn btn-primary" onclick="saveJournal()">Save</button></div>
+    </div></div>`;
+  } else if (view === 'past') {
+    r.innerHTML = `<div class="modal-overlay" onclick="if(event.target===this)closeModal()"><div class="modal">
+      <h2>Log past trip</h2>
+      <div class="field"><label>Destination</label><input id="m-name" placeholder="e.g. Bali" /></div>
+      <div class="field"><label>Year</label><input id="m-year" placeholder="e.g. 2022" type="number" min="1900" max="2099" /></div>
+      <div class="field"><label>Your rating</label>
+        <div class="stars" id="star-picker">
+          <span class="star" onclick="setStar(1)">★</span>
+          <span class="star" onclick="setStar(2)">★</span>
+          <span class="star" onclick="setStar(3)">★</span>
+          <span class="star" onclick="setStar(4)">★</span>
+          <span class="star" onclick="setStar(5)">★</span>
+        </div>
+      </div>
+      <div class="field"><label>Emoji</label><input id="m-emoji" placeholder="🌴" style="width:72px;" /></div>
+      <div class="field"><label>Highlights (one per line)</label><textarea id="m-highlights" placeholder="e.g. Sunrise at Angkor Wat&#10;Best street food of my life"></textarea></div>
+      <div class="field"><label>Notes & memories</label><textarea id="m-notes" placeholder="What you loved, tips for next time..."></textarea></div>
+      <div class="modal-actions"><button class="btn" onclick="closeModal()">Cancel</button><button class="btn btn-primary" onclick="savePast()">Save</button></div>
+    </div></div>`;
+    window._starRating = 0;
+  }
+}
+
+let _starRating = 0;
+window.setStar = function(n) {
+  _starRating = n;
+  document.querySelectorAll('#star-picker .star').forEach((s,i) => {
+    s.classList.toggle('filled', i < n);
+  });
+};
+
+function openDayModal(tripId) {
+  document.getElementById('modal-root').innerHTML =
+    `<div class="modal-overlay" onclick="if(event.target===this)closeModal()"><div class="modal">
+      <h2>Add day</h2>
+      <div class="field"><label>What's planned?</label><textarea id="m-day" placeholder="e.g. Morning hike + local market"></textarea></div>
+      <div class="modal-actions"><button class="btn" onclick="closeModal()">Cancel</button><button class="btn btn-primary" onclick="saveDay(${tripId})">Add</button></div>
+    </div></div>`;
+}
+
+function openHighlightModal(pastId) {
+  document.getElementById('modal-root').innerHTML =
+    `<div class="modal-overlay" onclick="if(event.target===this)closeModal()"><div class="modal">
+      <h2>Add highlight</h2>
+      <div class="field"><label>What was memorable?</label><input id="m-hl" placeholder="e.g. Watching the sunset from the dunes" /></div>
+      <div class="modal-actions"><button class="btn" onclick="closeModal()">Cancel</button><button class="btn btn-primary" onclick="saveHighlight(${pastId})">Add</button></div>
+    </div></div>`;
+}
+
+// ── Saves ─────────────────────────────────────────────────────
+function saveTrip() {
+  const name = document.getElementById('m-name').value.trim();
+  if (!name) return;
+  const trip = {
+    id: Date.now(), name,
+    emoji: document.getElementById('m-emoji').value.trim() || '✈️',
+    dates: document.getElementById('m-dates').value.trim() || 'Dates TBD',
+    status: document.getElementById('m-status').value,
+    days: [], places: [], notes: ''
+  };
+  data.trips.push(trip);
+  saveData(); closeModal(); renderSidebarTrips(); renderContent();
+}
+
+function savePlace() {
+  const name = document.getElementById('m-name').value.trim();
+  if (!name) return;
+  data.places.push({
+    id: Date.now(), name,
+    location: document.getElementById('m-loc').value.trim(),
+    type: document.getElementById('m-type').value,
+    emoji: document.getElementById('m-emoji').value.trim() || '📍',
+    note: document.getElementById('m-note').value.trim()
+  });
+  saveData(); closeModal(); renderContent();
+}
+
+function saveJournal() {
+  const title = document.getElementById('m-title').value.trim();
+  if (!title) return;
+  const date = new Date().toLocaleDateString('en-AU', { year:'numeric', month:'short', day:'numeric' });
+  data.journal.unshift({ id: Date.now(), title, date, body: document.getElementById('m-body').value.trim() });
+  saveData(); closeModal(); renderContent();
+}
+
+function savePast() {
+  const name = document.getElementById('m-name').value.trim();
+  if (!name) return;
+  const hlRaw = document.getElementById('m-highlights').value.trim();
+  const highlights = hlRaw ? hlRaw.split('\n').map(l => l.trim()).filter(Boolean) : [];
+  data.past.push({
+    id: Date.now(), name,
+    emoji: document.getElementById('m-emoji').value.trim() || '🌍',
+    year: document.getElementById('m-year').value.trim() || new Date().getFullYear().toString(),
+    rating: _starRating || 0,
+    highlights,
+    notes: document.getElementById('m-notes').value.trim()
+  });
+  saveData(); closeModal(); renderContent();
+}
+
+function saveDay(tripId) {
+  const day = document.getElementById('m-day').value.trim();
+  if (!day) return;
+  const trip = data.trips.find(t => t.id === tripId);
+  if (trip) { trip.days.push(day); if (selectedTrip && selectedTrip.id === tripId) selectedTrip = trip; }
+  saveData(); closeModal(); renderContent();
+}
+
+function saveHighlight(pastId) {
+  const hl = document.getElementById('m-hl').value.trim();
+  if (!hl) return;
+  const past = data.past.find(p => p.id === pastId);
+  if (past) { if (!past.highlights) past.highlights = []; past.highlights.push(hl); if (selectedTrip && selectedTrip.id === pastId) selectedTrip = past; }
+  saveData(); closeModal(); renderContent();
+}
+
+function closeModal() { document.getElementById('modal-root').innerHTML = ''; }
+
+// ── Init ──────────────────────────────────────────────────────
+renderSidebarTrips();
+renderTopbar();
+renderContent();
+</script>
+</body>
+</html>
