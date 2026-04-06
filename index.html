@@ -1623,7 +1623,7 @@ function saveTrip(){
   const name=gv('mn');if(!name)return;
   const status=gv('mst')||'planning';
   const ds=gv('mds');
-  const t={id:Date.now(),name,country:gC('mc'),city:gv('mcity'),emoji:gv('me')||'✈️',dateStart:ds,dateEnd:gv('mde'),status,days:[],timeline:[],places:[],notes:'',photos:[]};
+  const t={id:Date.now(),name,country:gC('mc'),city:gv('mcity'),emoji:gv('me')||'✈️',dateStart:ds,dateEnd:gv('mde'),status,timeline:[],places:[],notes:'',photos:[]};
   
   if(status === 'completed'){
     const year=ds?String(new Date(ds+'T00:00:00').getFullYear()):String(new Date().getFullYear());
