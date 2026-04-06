@@ -357,6 +357,8 @@ let view='trips',sel=null,tripTab='overview';
 let lbPhotos=[],lbIdx=0,lbLabels=[];
 let starVal=0,restScoreVal=null,placeScoreVal=null;
 let galSort='source',galGroup='source',galFilter=new Set(),galShowFilter=false;
+let foodSort='newest',foodFilterCuisine='',foodFilterTrip='',foodFilterScore='';
+let placesSort='name',placesFilterType='';
 
 /* ── nav ── */
 function sv(v,el){
@@ -800,6 +802,12 @@ window.saveGalPhotoEdit = function(fname){
 
 window.galSetGroup=function(v){galGroup=v;rc();}
 window.galSetSort=function(v){galSort=v;rc();}
+window.foodSetSort=function(v){foodSort=v;rc();}
+window.foodSetFilterCuisine=function(v){foodFilterCuisine=v;rc();}
+window.foodSetFilterTrip=function(v){foodFilterTrip=v;rc();}
+window.foodSetFilterScore=function(v){foodFilterScore=v;rc();}
+window.placesSetSort=function(v){placesSort=v;rc();}
+window.placesSetFilterType=function(v){placesFilterType=v;rc();}
 window.galToggleFilter=function(key){
   if(galFilter.size===0){
     galFilter=new Set(['trip','past','place','food','other'].filter(k=>k!==key));
@@ -810,6 +818,16 @@ window.galToggleFilter=function(key){
   }else{ galFilter.add(key); }
   rc();
 }
+window.setFoodSort=function(v){foodSort=v;rc();}
+window.setFoodFilter=function(field,v){
+  if(field==='cuisine')foodFilterCuisine=v;
+  else if(field==='trip')foodFilterTrip=v;
+  else if(field==='score')foodFilterScore=v;
+  rc();
+}
+window.setPlacesSort=function(v){placesSort=v;rc();}
+window.setPlacesFilter=function(v){placesFilterType=v;rc();}
+window.scrollToTop=function(){document.getElementById('content').scrollTo({top:0,behavior:'smooth'});}
 
 /* ── TIMELINE helpers ── */
 function getDays(t){
@@ -839,16 +857,94 @@ const V={
   },
   places(){
     const TM={Culture:'tag-gold',Nature:'tag-green',Food:'tag-blue',Adventure:'tag-red'};
-    if(!D.places.length)return`<div class="empty"><div class="empty-icon">📍</div><p>No places saved yet.</p></div>`;
-    return`<div class="grid">`+D.places.map(p=>{
+    const types=['Culture','Nature','Food','Adventure'];
+    let visible=D.places;
+    if(placesFilterType)visible=visible.filter(p=>p.type===placesFilterType);
+    if(placesSort==='rating')visible=[...visible].sort((a,b)=>(Number(b.rating)||0)-(Number(a.rating)||0));
+    else if(placesSort==='name')visible=[...visible].sort((a,b)=>a.name.localeCompare(b.name));
+    else if(placesSort==='country')visible=[...visible].sort((a,b)=>(a.country||'').localeCompare(b.country||''));
+
+    const sortBtns=[['name','A–Z'],['rating','Top rated'],['country','Country']].map(([v,l])=>
+      `<button class="score-btn ${placesSort===v?'active':''}" style="font-size:11px;height:28px;padding:0 10px;" onclick="placesSetSort('${v}')">${l}</button>`).join('');
+    const typeBtns=types.map(t=>
+      `<button class="score-btn ${placesFilterType===t?'active':''}" style="font-size:11px;height:28px;padding:0 10px;" onclick="placesSetFilterType(${placesFilterType===t?`''`:`'${t}'`})">${t}</button>`).join('');
+
+    const filtersHtml=`<div style="margin-bottom:12px;background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);padding:10px 12px;">
+      <div style="font-size:10px;font-weight:500;letter-spacing:0.09em;text-transform:uppercase;color:var(--text3);margin-bottom:6px;">Sort</div>
+      <div class="score-row" style="margin-top:0;flex-wrap:wrap;">${sortBtns}</div>
+      <div style="font-size:10px;font-weight:500;letter-spacing:0.09em;text-transform:uppercase;color:var(--text3);margin-top:10px;margin-bottom:6px;">Type</div>
+      <div class="score-row" style="margin-top:0;flex-wrap:wrap;">${typeBtns}</div>
+    </div>`;
+
+    const emptyState=!D.places.length
+      ?`<div class="empty"><div class="empty-icon">📍</div><p>No places saved yet.</p></div>`
+      :(!visible.length?`<div class="empty" style="padding:32px 0;"><div class="empty-icon">🔍</div><p>No places match your filters.</p></div>`:'');
+
+    const cards=visible.map(p=>{
       const cover=(p.photos&&p.photos.length&&photoUrl(p.photos[0]))?`<div class="card-cover"><img loading="lazy" src="${photoUrl(p.photos[0])}" alt=""/></div>`:`<div class="card-cover"><div class="card-cover-empty">${p.emoji||'📍'}</div></div>`;
-      const rs=p.rating?`<span class="tag ${psClass(p.rating)}">${p.rating}/10</span>`:'';
+      const rs=p.rating?`<span class="tag ${psClass(p.rating)}">${Number(p.rating).toFixed(1)}/10</span>`:'';
       return`<div class="card" style="cursor:default;">${cover}<div class="card-title">${ee(p.name)}</div><div class="card-sub">${ee(p.location||'')}</div><div class="card-meta"><span class="tag ${TM[p.type]||'tag-gray'}">${ee(p.type||'')}</span>${rs}</div>${p.note?`<div style="font-size:12px;color:var(--text2);margin-top:7px;line-height:1.5;">${ee(p.note)}</div>`:''}<div style="display:flex;gap:6px;margin-top:8px;"><button class="btn btn-sm" onclick="editPlace(${p.id})">Edit</button><button class="btn btn-sm btn-red" onclick="deleteItem('places',${p.id})">Delete</button></div></div>`;
-    }).join('')+`<div class="add-card" onclick="openAdd()"><svg width="20" height="20" viewBox="0 0 20 20" fill="none"><circle cx="10" cy="10" r="8" stroke="currentColor" stroke-width="1.3"/><path d="M10 6v8M6 10h8" stroke="currentColor" stroke-width="1.4" stroke-linecap="round"/></svg>Add place</div></div>`;
+    }).join('');
+
+    return`<div>
+      <div class="grid" style="margin-bottom:10px;"><div class="add-card" onclick="openAdd()"><svg width="20" height="20" viewBox="0 0 20 20" fill="none"><circle cx="10" cy="10" r="8" stroke="currentColor" stroke-width="1.3"/><path d="M10 6v8M6 10h8" stroke="currentColor" stroke-width="1.4" stroke-linecap="round"/></svg>Add place</div></div>
+      ${filtersHtml}
+      ${D.places.length?`<div style="font-size:12px;color:var(--text3);margin-bottom:10px;">${visible.length} of ${D.places.length} place${D.places.length!==1?'s':''}</div>`:''}
+      ${emptyState}<div class="grid">${cards}</div>
+      ${visible.length>6?`<button onclick="scrollToTop()" style="position:fixed;bottom:28px;right:16px;width:42px;height:42px;border-radius:50%;background:var(--gold);border:none;color:#0f0e0c;font-size:20px;cursor:pointer;display:flex;align-items:center;justify-content:center;box-shadow:0 4px 16px rgba(0,0,0,0.4);z-index:40;">↑</button>`:''}
+    </div>`;
   },
   food(){
-    if(!D.food.length)return`<div class="empty"><div class="empty-icon">🍽️</div><p>No restaurants logged yet.<br>Tap + Add to record a meal.</p></div>`;
-    return`<div style="display:flex;flex-direction:column;gap:8px;"><div class="add-card" onclick="openAdd()" style="min-height:70px;"><svg width="20" height="20" viewBox="0 0 20 20" fill="none"><circle cx="10" cy="10" r="8" stroke="currentColor" stroke-width="1.3"/><path d="M10 6v8M6 10h8" stroke="currentColor" stroke-width="1.4" stroke-linecap="round"/></svg>Add restaurant</div>`+D.food.map(f=>{
+    const allFood=D.food;
+    const cuisines=[...new Set(allFood.map(f=>f.cuisine).filter(Boolean))].sort();
+    const trips=[...new Set(allFood.map(f=>f.tripId).filter(Boolean))].map(id=>D.trips.find(t=>t.id===id)).filter(Boolean);
+
+    let visible=allFood;
+    if(foodFilterCuisine)visible=visible.filter(f=>f.cuisine===foodFilterCuisine);
+    if(foodFilterTrip)visible=visible.filter(f=>String(f.tripId)===String(foodFilterTrip));
+    if(foodFilterScore==='high')visible=visible.filter(f=>f.score!==null&&f.score!=='na'&&Number(f.score)>=8);
+    else if(foodFilterScore==='mid')visible=visible.filter(f=>f.score!==null&&f.score!=='na'&&Number(f.score)>=5&&Number(f.score)<8);
+    else if(foodFilterScore==='low')visible=visible.filter(f=>f.score!==null&&f.score!=='na'&&Number(f.score)<5);
+    else if(foodFilterScore==='unrated')visible=visible.filter(f=>f.score===null||f.score===undefined);
+
+    if(foodSort==='newest')visible=[...visible].sort((a,b)=>(b.date||'').localeCompare(a.date||''));
+    else if(foodSort==='oldest')visible=[...visible].sort((a,b)=>(a.date||'').localeCompare(b.date||''));
+    else if(foodSort==='score'||foodSort==='score-high')visible=[...visible].sort((a,b)=>Number(b.score||0)-Number(a.score||0));
+    else if(foodSort==='name')visible=[...visible].sort((a,b)=>ee(a.name).localeCompare(ee(b.name)));
+
+    const activeFilters=(foodFilterCuisine?1:0)+(foodFilterTrip?1:0)+(foodFilterScore?1:0);
+    const filterChip=(label,clearFn)=>`<span style="display:inline-flex;align-items:center;gap:4px;background:var(--gold-bg);color:var(--gold);border:1px solid var(--gold);border-radius:99px;font-size:11px;padding:2px 8px;">${label}<button onclick="${clearFn}" style="background:none;border:none;color:var(--gold);cursor:pointer;font-size:12px;line-height:1;padding:0 0 0 2px;">✕</button></span>`;
+
+    const sortBtns=[['newest','Newest'],['oldest','Oldest'],['score','Top rated'],['name','A–Z']].map(([v,l])=>
+      `<button class="score-btn ${foodSort===v?'active':''}" style="font-size:11px;height:28px;padding:0 10px;" onclick="setFoodSort('${v}')">${l}</button>`).join('');
+
+    const cuisineBtns=cuisines.map(c=>
+      `<button class="score-btn ${foodFilterCuisine===c?'active':''}" style="font-size:11px;height:28px;padding:0 10px;" onclick="setFoodFilter('cuisine',${foodFilterCuisine===c?`''`:`'${c.replace(/'/g,"\\'")}'`})">${c}</button>`).join('');
+
+    const tripBtns=trips.map(t=>
+      `<button class="score-btn ${foodFilterTrip===String(t.id)?'active':''}" style="font-size:11px;height:28px;padding:0 10px;" onclick="setFoodFilter('trip',${foodFilterTrip===String(t.id)?`''`:`'${t.id}'`})">${ee(t.name)}</button>`).join('');
+
+    const scoreBtns=[['high','8–10 ★'],['mid','5–7'],['low','<5'],['unrated','Unrated']].map(([v,l])=>
+      `<button class="score-btn ${foodFilterScore===v?'active':''}" style="font-size:11px;height:28px;padding:0 10px;" onclick="setFoodFilter('score',${foodFilterScore===v?`''`:`'${v}'`})">${l}</button>`).join('');
+
+    const filtersHtml=`<div style="margin-bottom:12px;background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);padding:10px 12px;">
+      <div style="font-size:10px;font-weight:500;letter-spacing:0.09em;text-transform:uppercase;color:var(--text3);margin-bottom:6px;">Sort</div>
+      <div class="score-row" style="margin-top:0;flex-wrap:wrap;">${sortBtns}</div>
+      ${cuisines.length?`<div style="font-size:10px;font-weight:500;letter-spacing:0.09em;text-transform:uppercase;color:var(--text3);margin-top:10px;margin-bottom:6px;">Cuisine</div>
+      <div class="score-row" style="margin-top:0;flex-wrap:wrap;">${cuisineBtns}</div>`:''}
+      ${trips.length?`<div style="font-size:10px;font-weight:500;letter-spacing:0.09em;text-transform:uppercase;color:var(--text3);margin-top:10px;margin-bottom:6px;">Trip</div>
+      <div class="score-row" style="margin-top:0;flex-wrap:wrap;">${tripBtns}</div>`:''}
+      <div style="font-size:10px;font-weight:500;letter-spacing:0.09em;text-transform:uppercase;color:var(--text3);margin-top:10px;margin-bottom:6px;">Score</div>
+      <div class="score-row" style="margin-top:0;flex-wrap:wrap;">${scoreBtns}</div>
+    </div>`;
+
+    const activeChips=`<div style="display:flex;flex-wrap:wrap;gap:6px;margin-bottom:10px;">
+      ${foodFilterCuisine?filterChip('🍴 '+foodFilterCuisine,"setFoodFilter('cuisine','')"):''}
+      ${foodFilterTrip?filterChip('✈️ '+(D.trips.find(t=>String(t.id)===String(foodFilterTrip))?.name||'Trip'),"setFoodFilter('trip','')"):''}
+      ${foodFilterScore?filterChip({high:'8–10 ★',mid:'5–7',low:'<5',unrated:'Unrated'}[foodFilterScore],"setFoodFilter('score','')"):''}
+    </div>`;
+
+    const cards=visible.map(f=>{
       const trip=f.tripId?D.trips.find(t=>t.id===f.tripId):null;
       const ph=f.photos||[];
       const photoHtml=ph.length?`<div class="photo-grid" style="margin-top:10px;margin-bottom:4px;">`+foodThumbs(f)+`<button class="photo-add-btn" onclick="ppFood(${f.id})" style="aspect-ratio:1;"><svg width="16" height="16" viewBox="0 0 20 20" fill="none"><rect x="2" y="3.5" width="16" height="13" rx="2" stroke="currentColor" stroke-width="1.3"/><circle cx="10" cy="10" r="2.8" stroke="currentColor" stroke-width="1.3"/><path d="M6.5 3.5l1-2h5l1 2" stroke="currentColor" stroke-width="1.3" stroke-linejoin="round"/></svg></button></div>`:'';
@@ -866,7 +962,19 @@ const V={
         ${trip?`<div style="margin-top:8px;"><span class="tag tag-gray" style="font-size:10px;">✈️ ${ee(trip.name)}</span></div>`:''}
         <div style="display:flex;gap:6px;margin-top:10px;"><button class="btn btn-sm" onclick="editFood(${f.id})">Edit</button><button class="btn btn-sm btn-red" onclick="deleteItem('food',${f.id})">Delete</button></div>
       </div>`;
-    }).join('')+`</div>`;
+    }).join('');
+
+    const emptyState=!allFood.length
+      ?`<div class="empty"><div class="empty-icon">🍽️</div><p>No restaurants logged yet.<br>Tap + Add to record a meal.</p></div>`
+      :(!visible.length?`<div class="empty" style="padding:32px 0;"><div class="empty-icon">🔍</div><p>No restaurants match your filters.</p></div>`:'');
+
+    return`<div style="display:flex;flex-direction:column;gap:8px;">
+      <div class="add-card" onclick="openAdd()" style="min-height:70px;"><svg width="20" height="20" viewBox="0 0 20 20" fill="none"><circle cx="10" cy="10" r="8" stroke="currentColor" stroke-width="1.3"/><path d="M10 6v8M6 10h8" stroke="currentColor" stroke-width="1.4" stroke-linecap="round"/></svg>Add restaurant</div>
+      ${filtersHtml}
+      ${activeFilters?activeChips:''}
+      <div style="font-size:12px;color:var(--text3);margin-bottom:2px;">${visible.length} of ${allFood.length} restaurant${allFood.length!==1?'s':''}</div>
+      ${emptyState}${cards}
+    </div><button onclick="scrollToTop()" style="position:fixed;bottom:28px;right:16px;width:40px;height:40px;border-radius:50%;background:var(--gold);border:none;color:#0f0e0c;font-size:18px;cursor:pointer;display:flex;align-items:center;justify-content:center;box-shadow:0 4px 12px rgba(0,0,0,0.4);z-index:40;">↑</button>`;
   },
   journal(){
     if(!D.journal.length)return`<div class="empty"><div class="empty-icon">📓</div><p>Your travel journal is empty.</p></div>`;
